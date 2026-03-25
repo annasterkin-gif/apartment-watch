@@ -1,0 +1,10 @@
+node_modules/
+apartment-seen.json
+apartment-heartbeat.txt
+facebook-state.json
+last-results.json
+yad2-state.json
+*.bak*
+runlog*.txt
+~$*
+.env

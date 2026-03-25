@@ -1,0 +1,16 @@
+{
+  "name": "realtor",
+  "version": "1.0.0",
+  "description": "Apartment rental search agent — Yad2 + Facebook, מקלט filter",
+  "main": "apartment-watch.js",
+  "scripts": {
+    "start": "node server.js",
+    "ui":    "node apartment-config-ui.js",
+    "run":   "node apartment-watch.js"
+  },
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "playwright": "^1.58.2"
+  }
+}

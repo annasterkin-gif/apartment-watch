@@ -1,0 +1,7 @@
+{
+  "city_hebrew": "pardes hana",
+  "rooms_min": 2,
+  "rooms_max": 3,
+  "price_max_ils": 5000,
+  "require_shelter": false
+}
