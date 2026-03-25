@@ -5,12 +5,14 @@
   "main": "apartment-watch.js",
   "scripts": {
     "start": "node server.js",
-    "ui":    "node apartment-config-ui.js",
-    "run":   "node apartment-watch.js"
+    "ui": "node apartment-config-ui.js",
+    "run": "node apartment-watch.js"
   },
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
-    "playwright": "^1.58.2"
+    "playwright": "^1.58.2",
+    "playwright-extra": "^4.3.6",
+    "playwright-extra-plugin-stealth": "^0.0.1"
   }
 }
