@@ -257,7 +257,7 @@ async function saveConfig(andRun) {
     return;
   }
 
-  renderSettings({ type: "run", msg: tr.flashRunning });
+  await renderSettings({ type: "run", msg: tr.flashRunning });
   startLogStream();
 }
 
