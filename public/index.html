@@ -122,6 +122,8 @@ function esc(s) {
   return String(s || "").replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;");
 }
 
+function toggleLang() { setLang(lang === 'he' ? 'en' : 'he'); }
+
 function setLang(l) {
   lang = l;
   localStorage.setItem("lang", l);
@@ -145,7 +147,7 @@ function renderNav() {
   document.getElementById("nav").innerHTML = `
     <span class="tab ${activeTab === 'settings' ? 'active' : ''}" onclick="showTab('settings')">${tr.tabSettings}</span>
     <span class="tab ${activeTab === 'results'  ? 'active' : ''}" onclick="showTab('results')">${tr.tabResults}</span>
-    <button class="lang-toggle" onclick="setLang(lang === 'he' ? 'en' : 'he')">${tr.langToggle}</button>
+    <button class="lang-toggle" onclick="toggleLang()">${tr.langToggle}</button>
   `;
 }
 
