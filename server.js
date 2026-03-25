@@ -12,8 +12,9 @@ const { spawn }  = require("child_process");
 
 const PORT        = process.env.PORT || 3456;
 const CONFIG_PATH = path.join(__dirname, "apartment-config.json");
-const RESULTS_PATH= path.join(__dirname, "last-results.json");
-const ZAPIER_URL  = process.env.ZAPIER_WEBHOOK_URL || "";
+const RESULTS_PATH  = path.join(__dirname, "last-results.json");
+const FB_STATE_PATH = path.join(__dirname, "facebook-state.json");
+const ZAPIER_URL    = process.env.ZAPIER_WEBHOOK_URL || "";
 
 // ── CORS ───────────────────────────────────────────────────────────────────────
 function setCors(res) {
@@ -152,6 +153,28 @@ const server = http.createServer(async (req, res) => {
     if (!runInProgress) { res.write(`event: done\ndata: done\n\n`); res.end(); return; }
     sseClients.push(res);
     req.on("close", () => { sseClients = sseClients.filter(r => r !== res); });
+    return;
+  }
+
+  // GET /api/facebook-status
+  if (req.method === "GET" && u.pathname === "/api/facebook-status") {
+    res.writeHead(200, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({ hasSession: fs.existsSync(FB_STATE_PATH) }));
+    return;
+  }
+
+  // POST /api/facebook-session
+  if (req.method === "POST" && u.pathname === "/api/facebook-session") {
+    const body = await parseJsonBody(req);
+    try {
+      JSON.parse(body.content);
+      fs.writeFileSync(FB_STATE_PATH, body.content, "utf8");
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ ok: true }));
+    } catch {
+      res.writeHead(400, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ error: "invalid" }));
+    }
     return;
   }
 

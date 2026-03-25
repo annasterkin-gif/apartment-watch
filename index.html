@@ -89,6 +89,11 @@ const T = {
     badgeYad2: "יד2", badgeFbPosts: "פוסט FB", badgeShelter: "✓ מקלט", badgeRooms: "חדרים",
     linkOpen: "פתח מודעה ↗", groupLabel: "👥 קבוצה:", groupJoin: "הצטרף ↗",
     loading: "טוען...",
+    fbPromptTitle: "פייסבוק מרקטפלייס",
+    fbPromptMsg: "לא נמצא קובץ סשן לפייסבוק. העלה את הקובץ כדי לכלול מרקטפלייס בחיפוש.",
+    fbHint: "ליצירת הקובץ: הרץ <code>node facebook-login.js</code> מקומית",
+    fbBtnUpload: "העלה קובץ והפעל", fbBtnSkip: "דלג על פייסבוק והפעל",
+    fbUploading: "מעלה...", fbUploadErr: "שגיאה. נסה שוב.",
   },
   en: {
     dir: "ltr", lang: "en", langToggle: "עב",
@@ -109,6 +114,11 @@ const T = {
     badgeYad2: "Yad2", badgeFbPosts: "FB post", badgeShelter: "✓ Shelter", badgeRooms: "rooms",
     linkOpen: "Open listing ↗", groupLabel: "👥 Group:", groupJoin: "Join ↗",
     loading: "Loading...",
+    fbPromptTitle: "Facebook Marketplace",
+    fbPromptMsg: "No Facebook session found. Upload your file to include Marketplace in the search.",
+    fbHint: "To create the file: run <code>node facebook-login.js</code> locally",
+    fbBtnUpload: "Upload & Run", fbBtnSkip: "Skip Facebook & Run",
+    fbUploading: "Uploading...", fbUploadErr: "Upload failed. Try again.",
   },
 };
 
@@ -241,25 +251,73 @@ async function saveConfig(andRun) {
     return;
   }
 
+  let hasFb = false;
   try {
-    const runRes = await fetch(window.API_BASE + "/api/run", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(cfg),
-    });
-    if (runRes.status === 409) {
-      renderSettings({ type: "err", msg: tr.flashAlready });
-      return;
-    }
-    if (!runRes.ok) throw new Error();
+    const r = await fetch(window.API_BASE + "/api/facebook-status");
+    if (r.ok) hasFb = (await r.json()).hasSession;
+  } catch {}
+
+  if (!hasFb) { showFacebookPrompt(); return; }
+  await doRun();
+}
+
+async function doRun() {
+  const tr = t();
+  try {
+    const r = await fetch(window.API_BASE + "/api/run", { method: "POST" });
+    if (r.status === 409) { renderSettings({ type: "err", msg: tr.flashAlready }); return; }
+    if (!r.ok) throw new Error();
   } catch {
     renderSettings({ type: "err", msg: tr.flashError });
     return;
   }
-
   await renderSettings({ type: "run", msg: tr.flashRunning });
   startLogStream();
 }
+
+function showFacebookPrompt() {
+  const tr = t();
+  const formArea = document.getElementById("form-area");
+  if (!formArea) return;
+  formArea.innerHTML = `
+    <div style="padding:20px;background:#f0f6ff;border-radius:10px;border:1px solid #c3d9f5;margin-bottom:16px">
+      <h2 style="font-size:1.05rem;color:#1a3a5c;margin-bottom:8px">📘 ${tr.fbPromptTitle}</h2>
+      <p style="font-size:.9rem;color:#334;margin-bottom:6px">${tr.fbPromptMsg}</p>
+      <p style="font-size:.8rem;color:#777;margin-bottom:16px">${tr.fbHint}</p>
+      <input type="file" id="fbFile" accept=".json,application/json" style="margin-bottom:14px;font-size:.85rem">
+      <div class="buttons">
+        <button class="btn-save" id="btnFbUpload" onclick="uploadFbAndRun()">${tr.fbBtnUpload}</button>
+        <button class="btn-run" onclick="skipFbAndRun()">${tr.fbBtnSkip}</button>
+      </div>
+      <div id="fbMsg" style="margin-top:10px;font-size:.85rem;color:#c00"></div>
+    </div>`;
+}
+
+async function uploadFbAndRun() {
+  const tr  = t();
+  const inp = document.getElementById("fbFile");
+  if (!inp || !inp.files || !inp.files[0]) { await skipFbAndRun(); return; }
+  const btn = document.getElementById("btnFbUpload");
+  const msg = document.getElementById("fbMsg");
+  btn.disabled = true;
+  if (msg) msg.textContent = tr.fbUploading;
+  try {
+    const text = await inp.files[0].text();
+    JSON.parse(text);
+    const r = await fetch(window.API_BASE + "/api/facebook-session", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ content: text }),
+    });
+    if (!r.ok) throw new Error();
+  } catch {
+    if (msg) msg.textContent = tr.fbUploadErr;
+    if (btn) btn.disabled = false;
+    return;
+  }
+  await doRun();
+}
+
+async function skipFbAndRun() { await doRun(); }
 
 function startLogStream() {
   const tr = t();
