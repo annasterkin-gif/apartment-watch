@@ -3,7 +3,7 @@ services:
     name: apartment-watch-api
     runtime: node
     buildCommand: npm install && npx playwright install chromium --with-deps
-    startCommand: node server.js
+    startCommand: xvfb-run -a node server.js
     plan: free
     envVars:
       - key: NODE_ENV
