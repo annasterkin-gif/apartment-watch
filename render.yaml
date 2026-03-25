@@ -2,8 +2,8 @@ services:
   - type: web
     name: apartment-watch-api
     runtime: node
-    buildCommand: npm install && npx playwright install chromium --with-deps
-    startCommand: xvfb-run -a node server.js
+    buildCommand: npm install && npx playwright install chromium-headless-shell
+    startCommand: node server.js
     plan: free
     envVars:
       - key: NODE_ENV

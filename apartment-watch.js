@@ -901,7 +901,7 @@ process.on("unhandledRejection", (reason) => {
   };
   if (fs.existsSync(YAD2_STATE_PATH)) ctxOpts.storageState = YAD2_STATE_PATH;
 
-  const browser = await chromium.launch({ headless: true, args: ["--ozone-platform=headless", "--disable-gpu", "--disable-dev-shm-usage"] });
+  const browser = await chromium.launch({ channel: "chromium-headless-shell", args: ["--disable-dev-shm-usage"] });
   const context = await browser.newContext(ctxOpts);
   await context.addInitScript(() => {
     Object.defineProperty(navigator, "webdriver", { get: () => undefined });
@@ -971,7 +971,7 @@ process.on("unhandledRejection", (reason) => {
   if (fs.existsSync(FB_STORAGE_STATE)) {
     let fbBrowser;
     try {
-      fbBrowser = await chromium.launch({ headless: true, args: ["--ozone-platform=headless", "--disable-gpu", "--disable-dev-shm-usage"] });
+      fbBrowser = await chromium.launch({ channel: "chromium-headless-shell", args: ["--disable-dev-shm-usage"] });
       const fbCtx = await fbBrowser.newContext({
         storageState: FB_STORAGE_STATE,
         locale:       "he-IL",
