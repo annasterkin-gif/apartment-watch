@@ -125,6 +125,7 @@ const T = {
 let lang = localStorage.getItem("lang") || "he";
 let activeTab = "settings";
 let logEventSource = null;
+let pendingConfig = null;
 
 function t() { return T[lang]; }
 
@@ -246,6 +247,8 @@ async function saveConfig(andRun) {
     return;
   }
 
+  pendingConfig = cfg;
+
   if (!andRun) {
     renderSettings({ type: "ok", msg: tr.flashSaved });
     return;
@@ -264,7 +267,11 @@ async function saveConfig(andRun) {
 async function doRun() {
   const tr = t();
   try {
-    const r = await fetch(window.API_BASE + "/api/run", { method: "POST" });
+    const r = await fetch(window.API_BASE + "/api/run", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(pendingConfig || {}),
+    });
     if (r.status === 409) { renderSettings({ type: "err", msg: tr.flashAlready }); return; }
     if (!r.ok) throw new Error();
   } catch {

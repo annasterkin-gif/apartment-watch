@@ -903,7 +903,14 @@ process.on("unhandledRejection", (reason) => {
   };
   if (fs.existsSync(YAD2_STATE_PATH)) ctxOpts.storageState = YAD2_STATE_PATH;
 
-  const browser = await chromium.launch({ channel: "chromium-headless-shell", args: ["--disable-dev-shm-usage"] });
+  const proxyOpts = process.env.SCRAPERAPI_KEY ? {
+    server:   "http://proxy.scraperapi.com:8001",
+    username: "scraperapi",
+    password: process.env.SCRAPERAPI_KEY,
+  } : undefined;
+
+  const browser = await chromium.launch({ channel: "chromium-headless-shell", args: ["--disable-dev-shm-usage"], proxy: proxyOpts });
+  if (proxyOpts) ctxOpts.ignoreHTTPSErrors = true;
   const context = await browser.newContext(ctxOpts);
   await context.addInitScript(() => {
     Object.defineProperty(navigator, "webdriver", { get: () => undefined });
@@ -973,12 +980,13 @@ process.on("unhandledRejection", (reason) => {
   if (fs.existsSync(FB_STORAGE_STATE)) {
     let fbBrowser;
     try {
-      fbBrowser = await chromium.launch({ channel: "chromium-headless-shell", args: ["--disable-dev-shm-usage"] });
+      fbBrowser = await chromium.launch({ channel: "chromium-headless-shell", args: ["--disable-dev-shm-usage"], proxy: proxyOpts });
       const fbCtx = await fbBrowser.newContext({
-        storageState: FB_STORAGE_STATE,
-        locale:       "he-IL",
-        timezoneId:   "Asia/Jerusalem",
-        viewport:     { width: 1280, height: 800 },
+        storageState:      FB_STORAGE_STATE,
+        locale:            "he-IL",
+        timezoneId:        "Asia/Jerusalem",
+        viewport:          { width: 1280, height: 800 },
+        ignoreHTTPSErrors: !!proxyOpts,
       });
       const fbItems = await scanFacebookApartments(fbCtx, cfg);
       for (const fi of fbItems) { recordOpened(fi.platform, fi.url); allItems.push(fi); }
