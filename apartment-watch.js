@@ -903,14 +903,10 @@ process.on("unhandledRejection", (reason) => {
   };
   if (fs.existsSync(YAD2_STATE_PATH)) ctxOpts.storageState = YAD2_STATE_PATH;
 
-  const proxyOpts = process.env.SCRAPERAPI_KEY ? {
-    server:   "http://proxy.scraperapi.com:8001",
-    username: "scraperapi",
-    password: process.env.SCRAPERAPI_KEY,
-  } : undefined;
-
-  const browser = await chromium.launch({ channel: "chromium-headless-shell", args: ["--disable-dev-shm-usage"], proxy: proxyOpts });
-  if (proxyOpts) ctxOpts.ignoreHTTPSErrors = true;
+  const ZENROWS_KEY = process.env.ZENROWS_API_KEY;
+  const browser = ZENROWS_KEY
+    ? await chromium.connectOverCDP(`wss://browser.zenrows.com?apikey=${ZENROWS_KEY}&antibot=true`)
+    : await chromium.launch({ channel: "chromium-headless-shell", args: ["--disable-dev-shm-usage"] });
   const context = await browser.newContext(ctxOpts);
   await context.addInitScript(() => {
     Object.defineProperty(navigator, "webdriver", { get: () => undefined });
@@ -980,13 +976,14 @@ process.on("unhandledRejection", (reason) => {
   if (fs.existsSync(FB_STORAGE_STATE)) {
     let fbBrowser;
     try {
-      fbBrowser = await chromium.launch({ channel: "chromium-headless-shell", args: ["--disable-dev-shm-usage"], proxy: proxyOpts });
+      fbBrowser = ZENROWS_KEY
+        ? await chromium.connectOverCDP(`wss://browser.zenrows.com?apikey=${ZENROWS_KEY}&antibot=true`)
+        : await chromium.launch({ channel: "chromium-headless-shell", args: ["--disable-dev-shm-usage"] });
       const fbCtx = await fbBrowser.newContext({
-        storageState:      FB_STORAGE_STATE,
-        locale:            "he-IL",
-        timezoneId:        "Asia/Jerusalem",
-        viewport:          { width: 1280, height: 800 },
-        ignoreHTTPSErrors: !!proxyOpts,
+        storageState: FB_STORAGE_STATE,
+        locale:       "he-IL",
+        timezoneId:   "Asia/Jerusalem",
+        viewport:     { width: 1280, height: 800 },
       });
       const fbItems = await scanFacebookApartments(fbCtx, cfg);
       for (const fi of fbItems) { recordOpened(fi.platform, fi.url); allItems.push(fi); }
