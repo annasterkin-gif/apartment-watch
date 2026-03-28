@@ -12,9 +12,8 @@ const FB_STORAGE_STATE = path.join(__dirname, "facebook-state.json");
 const YAD2_STATE_PATH  = path.join(__dirname, "yad2-state.json");
 const RESULTS_PATH     = path.join(__dirname, "last-results.json");
 
-const GMAIL_USER   = process.env.GMAIL_USER   || "";
-const GMAIL_PASS   = process.env.GMAIL_PASS   || "";
-const NOTIFY_EMAIL = process.env.NOTIFY_EMAIL || GMAIL_USER;
+const GMAIL_SCRIPT_URL = process.env.GMAIL_SCRIPT_URL || "";
+const NOTIFY_EMAIL     = process.env.NOTIFY_EMAIL     || "";
 const MAX_YAD2_TO_FETCH = 30;
 
 function loadConfig() {
@@ -978,22 +977,20 @@ async function scanFacebookApartments(context, cfg) {
 
 // ── Gmail ──────────────────────────────────────────────────────────────────────
 async function sendEmail(subject, text, toEmail) {
-  if (!GMAIL_USER || !GMAIL_PASS) {
-    console.log("WARN: GMAIL_USER/GMAIL_PASS not set — skipping email");
+  if (!GMAIL_SCRIPT_URL) {
+    console.log("WARN: GMAIL_SCRIPT_URL not set — skipping email");
     return;
   }
   const to = toEmail || NOTIFY_EMAIL;
   if (!to) { console.log("WARN: no recipient email — skipping email"); return; }
-  console.log("DEBUG_EMAIL: sending to", to, "from", GMAIL_USER);
-  const nodemailer = require("nodemailer");
-  const transporter = nodemailer.createTransport({
-    service: "gmail",
-    auth: { user: GMAIL_USER, pass: GMAIL_PASS },
-    connectionTimeout: 10000,
-    greetingTimeout:   10000,
-    socketTimeout:     15000,
+  console.log("DEBUG_EMAIL: sending to", to);
+  const res = await fetch(GMAIL_SCRIPT_URL, {
+    method:  "POST",
+    headers: { "Content-Type": "application/json" },
+    body:    JSON.stringify({ to, subject, body: text }),
   });
-  await transporter.sendMail({ from: GMAIL_USER, to, subject, text });
+  const txt = await res.text();
+  if (txt !== "ok") throw new Error("Script replied: " + txt);
   console.log("DEBUG_EMAIL: sent OK");
 }
 
