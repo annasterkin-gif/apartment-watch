@@ -1030,12 +1030,23 @@ process.on("unhandledRejection", (reason) => {
   if (fs.existsSync(FB_STORAGE_STATE)) {
     let fbBrowser;
     try {
-      fbBrowser = await chromium.launch({ channel: "chromium-headless-shell", args: ["--disable-dev-shm-usage"] });
+      fbBrowser = await chromium.launch({
+        channel: "chromium-headless-shell",
+        args: [
+          "--disable-dev-shm-usage",
+          "--disable-gpu",
+          "--no-sandbox",
+          "--disable-setuid-sandbox",
+          "--disable-extensions",
+          "--single-process",
+          "--js-flags=--max-old-space-size=128",
+        ],
+      });
       const fbCtx = await fbBrowser.newContext({
         storageState: FB_STORAGE_STATE,
         locale:       "he-IL",
         timezoneId:   "Asia/Jerusalem",
-        viewport:     { width: 1280, height: 800 },
+        viewport:     { width: 800, height: 600 },
       });
       const fbItems = await scanFacebookApartments(fbCtx, cfg);
       for (const fi of fbItems) { recordOpened(fi.platform, fi.url); allItems.push(fi); }
