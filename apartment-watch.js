@@ -977,22 +977,19 @@ async function scanFacebookApartments(context, cfg) {
 }
 
 // ── Gmail ──────────────────────────────────────────────────────────────────────
-async function sendEmail(subject, text) {
+async function sendEmail(subject, text, toEmail) {
   if (!GMAIL_USER || !GMAIL_PASS) {
     console.log("WARN: GMAIL_USER/GMAIL_PASS not set — skipping email");
     return;
   }
+  const to = toEmail || NOTIFY_EMAIL;
+  if (!to) { console.log("WARN: no recipient email — skipping email"); return; }
   const nodemailer = require("nodemailer");
   const transporter = nodemailer.createTransport({
     service: "gmail",
     auth: { user: GMAIL_USER, pass: GMAIL_PASS },
   });
-  await transporter.sendMail({
-    from:    GMAIL_USER,
-    to:      NOTIFY_EMAIL,
-    subject,
-    text,
-  });
+  await transporter.sendMail({ from: GMAIL_USER, to, subject, text });
 }
 
 // ── Main ───────────────────────────────────────────────────────────────────────
@@ -1126,9 +1123,9 @@ process.on("unhandledRejection", (reason) => {
     console.log("OK: No new items and heartbeat already sent today — skipping email");
   } else {
     try {
-      await sendEmail(subject, emailBody);
+      await sendEmail(subject, emailBody, cfg.notify_email);
       markHeartbeatSent();
-      console.log("OK: Email sent to", NOTIFY_EMAIL);
+      console.log("OK: Email sent to", cfg.notify_email || NOTIFY_EMAIL);
     } catch (e) {
       console.log("WARN_EMAIL_FAILED:", String(e));
       process.exitCode = 1;

@@ -74,6 +74,7 @@ const T = {
     dir: "rtl", lang: "he", langToggle: "EN",
     tabSettings: "⚙️ הגדרות", tabResults: "🏘 תוצאות",
     subtitle: "הגדר את פרמטרי החיפוש ולחץ שמור. הסוכן יחפש דירות עם מקלט ביד2 ובפייסבוק.",
+    labelEmail: "אימייל לקבלת התראות", placeholderEmail: "you@gmail.com",
     labelCity: "עיר", hintCity: "(בעברית, לדוגמה: פרדס חנה)", placeholderCity: "פרדס חנה",
     labelRoomsMin: "מספר חדרים — מינימום", labelRoomsMax: "מספר חדרים — מקסימום",
     labelPrice: "מחיר מקסימלי (₪ לחודש)", hintPrice: "ריק = ללא הגבלה",
@@ -99,6 +100,7 @@ const T = {
     dir: "ltr", lang: "en", langToggle: "עב",
     tabSettings: "⚙️ Settings", tabResults: "🏘 Results",
     subtitle: "Set your search parameters and click Save. The agent will search for apartments on Yad2 and Facebook.",
+    labelEmail: "Email for notifications", placeholderEmail: "you@gmail.com",
     labelCity: "City", hintCity: "(in Hebrew, e.g. פרדס חנה)", placeholderCity: "פרדס חנה",
     labelRoomsMin: "Rooms — minimum", labelRoomsMax: "Rooms — maximum",
     labelPrice: "Max price (₪/month)", hintPrice: "leave blank = no limit",
@@ -168,7 +170,7 @@ async function renderSettings(flash) {
   const page = document.getElementById("page");
   page.innerHTML = `<div class="loading">${tr.loading}</div>`;
 
-  let cfg = { city_hebrew: "", rooms_min: 2, rooms_max: 4, price_max_ils: 8000, require_shelter: true };
+  let cfg = { notify_email: "", city_hebrew: "", rooms_min: 2, rooms_max: 4, price_max_ils: 8000, require_shelter: true };
   try {
     const r = await fetch(window.API_BASE + "/api/config");
     if (r.ok) cfg = await r.json();
@@ -182,6 +184,9 @@ async function renderSettings(flash) {
       <p class="subtitle">${tr.subtitle}</p>
       ${flashHtml}
       <div id="form-area">
+        <label>${tr.labelEmail}</label>
+        <input type="email" id="notify_email" value="${esc(cfg.notify_email || "")}" placeholder="${tr.placeholderEmail}">
+
         <label>${tr.labelCity} <span class="hint">${tr.hintCity}</span></label>
         <input type="text" id="city" value="${esc(cfg.city_hebrew)}" placeholder="${tr.placeholderCity}" dir="rtl">
 
@@ -221,6 +226,7 @@ async function renderSettings(flash) {
 
 function getFormConfig() {
   return {
+    notify_email:    document.getElementById("notify_email").value.trim(),
     city_hebrew:     document.getElementById("city").value.trim(),
     rooms_min:       parseFloat(document.getElementById("rooms_min").value) || null,
     rooms_max:       parseFloat(document.getElementById("rooms_max").value) || null,
