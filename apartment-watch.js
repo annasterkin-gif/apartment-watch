@@ -12,8 +12,10 @@ const FB_STORAGE_STATE = path.join(__dirname, "facebook-state.json");
 const YAD2_STATE_PATH  = path.join(__dirname, "yad2-state.json");
 const RESULTS_PATH     = path.join(__dirname, "last-results.json");
 
-const ZAPIER_WEBHOOK_URL     = process.env.ZAPIER_WEBHOOK_URL || "";
-const MAX_YAD2_TO_FETCH      = 30;
+const GMAIL_USER   = process.env.GMAIL_USER   || "";
+const GMAIL_PASS   = process.env.GMAIL_PASS   || "";
+const NOTIFY_EMAIL = process.env.NOTIFY_EMAIL || GMAIL_USER;
+const MAX_YAD2_TO_FETCH = 30;
 
 function loadConfig() {
   try {
@@ -974,21 +976,23 @@ async function scanFacebookApartments(context, cfg) {
   return out;
 }
 
-// ── Zapier ─────────────────────────────────────────────────────────────────────
-async function postToZapier(payload) {
-  if (!ZAPIER_WEBHOOK_URL) {
-    console.log("WARN: ZAPIER_WEBHOOK_URL not set — skipping POST");
+// ── Gmail ──────────────────────────────────────────────────────────────────────
+async function sendEmail(subject, text) {
+  if (!GMAIL_USER || !GMAIL_PASS) {
+    console.log("WARN: GMAIL_USER/GMAIL_PASS not set — skipping email");
     return;
   }
-  const res = await fetch(ZAPIER_WEBHOOK_URL, {
-    method:  "POST",
-    headers: { "Content-Type": "application/json" },
-    body:    JSON.stringify(payload),
+  const nodemailer = require("nodemailer");
+  const transporter = nodemailer.createTransport({
+    service: "gmail",
+    auth: { user: GMAIL_USER, pass: GMAIL_PASS },
   });
-  if (!res.ok) {
-    const txt = await res.text().catch(() => "");
-    throw new Error(`Zapier POST ${res.status}: ${txt.slice(0, 200)}`);
-  }
+  await transporter.sendMail({
+    from:    GMAIL_USER,
+    to:      NOTIFY_EMAIL,
+    subject,
+    text,
+  });
 }
 
 // ── Main ───────────────────────────────────────────────────────────────────────
@@ -1114,19 +1118,19 @@ process.on("unhandledRejection", (reason) => {
     console.log("WARN_RESULTS_SAVE_FAILED:", String(e).slice(0, 80));
   }
 
-  // ── Post to Zapier ─────────────────────────────────────────────────────────
+  // ── Send email ─────────────────────────────────────────────────────────────
   const heartbeatDue = isHeartbeatDue();
-  const shouldPost   = newItems.length > 0 || heartbeatDue;
+  const shouldSend   = newItems.length > 0 || heartbeatDue;
 
-  if (!shouldPost) {
-    console.log("OK: No new items and heartbeat already sent today — skipping Zapier POST");
+  if (!shouldSend) {
+    console.log("OK: No new items and heartbeat already sent today — skipping email");
   } else {
     try {
-      await postToZapier(payload);
+      await sendEmail(subject, emailBody);
       markHeartbeatSent();
-      console.log("OK: Posted to Zapier webhook");
+      console.log("OK: Email sent to", NOTIFY_EMAIL);
     } catch (e) {
-      console.log("WARN_ZAPIER_POST_FAILED:", String(e));
+      console.log("WARN_EMAIL_FAILED:", String(e));
       process.exitCode = 1;
     }
   }
