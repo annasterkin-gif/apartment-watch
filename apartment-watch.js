@@ -984,12 +984,17 @@ async function sendEmail(subject, text, toEmail) {
   }
   const to = toEmail || NOTIFY_EMAIL;
   if (!to) { console.log("WARN: no recipient email — skipping email"); return; }
+  console.log("DEBUG_EMAIL: sending to", to, "from", GMAIL_USER);
   const nodemailer = require("nodemailer");
   const transporter = nodemailer.createTransport({
     service: "gmail",
     auth: { user: GMAIL_USER, pass: GMAIL_PASS },
+    connectionTimeout: 10000,
+    greetingTimeout:   10000,
+    socketTimeout:     15000,
   });
   await transporter.sendMail({ from: GMAIL_USER, to, subject, text });
+  console.log("DEBUG_EMAIL: sent OK");
 }
 
 // ── Main ───────────────────────────────────────────────────────────────────────
