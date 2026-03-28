@@ -1,8 +1,6 @@
 "use strict";
 
-const { chromium } = require("playwright-extra");
-const StealthPlugin = require("playwright-extra-plugin-stealth");
-chromium.use(StealthPlugin());
+const { chromium } = require("playwright");
 const fs   = require("fs");
 const path = require("path");
 
@@ -526,7 +524,127 @@ async function applyRoomFilter(page, minRooms, maxRooms) {
   } catch {}
 }
 
-// ── Yad2 realestate scan ───────────────────────────────────────────────────────
+// ── Yad2 city code map ─────────────────────────────────────────────────────────
+const CITY_CODE_MAP = {
+  "תל אביב":           "5000",
+  "תל אביב יפו":       "5000",
+  "ירושלים":           "3000",
+  "חיפה":              "4000",
+  "באר שבע":           "9000",
+  "נתניה":             "7400",
+  "פתח תקווה":         "7900",
+  "ראשון לציון":       "8300",
+  "אשדוד":             "70",
+  "אשקלון":            "2650",
+  "חולון":             "6100",
+  "בני ברק":           "6200",
+  "רמת גן":            "8600",
+  "הרצליה":            "6400",
+  "כפר סבא":           "6900",
+  "רחובות":            "8400",
+  "פרדס חנה":          "7800",
+  "פרדס חנה-כרכור":   "7800",
+};
+
+function resolveYad2CityCode(cityHebrew) {
+  if (!cityHebrew) return null;
+  if (CITY_CODE_MAP[cityHebrew]) return CITY_CODE_MAP[cityHebrew];
+  for (const [name, code] of Object.entries(CITY_CODE_MAP)) {
+    if (cityHebrew.includes(name) || name.includes(cityHebrew)) return code;
+  }
+  return null;
+}
+
+// ── Yad2 API-based scan (no browser) ───────────────────────────────────────────
+const YAD2_API_BASE = "https://www.yad2.co.il/api/pre-load/getFeedIndex/realestate/rent";
+const YAD2_HEADERS  = {
+  "accept":          "application/json, text/plain, */*",
+  "accept-language": "he,en-US;q=0.9,en;q=0.8",
+  "referer":         "https://www.yad2.co.il/realestate/rent",
+  "user-agent":      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+  "sec-fetch-dest":  "empty",
+  "sec-fetch-mode":  "cors",
+  "sec-fetch-site":  "same-origin",
+};
+
+async function fetchYad2API(cfg) {
+  const cityCode = resolveYad2CityCode(cfg.city_hebrew);
+  if (!cityCode) {
+    console.log("WARN_YAD2_API: no city code for", cfg.city_hebrew, "— skipping Yad2");
+    return [];
+  }
+
+  const params = { city: cityCode };
+  if (cfg.rooms_min) params.minRooms = String(cfg.rooms_min);
+  if (cfg.rooms_max) params.maxRooms = String(cfg.rooms_max);
+  if (cfg.price_max_ils) params.maxPrice = String(cfg.price_max_ils);
+
+  const items = [];
+  const MAX_PAGES = 10;
+
+  for (let page = 1; page <= MAX_PAGES; page++) {
+    params.page = String(page);
+    const url = `${YAD2_API_BASE}?${new URLSearchParams(params)}`;
+    console.log("DEBUG_YAD2_API_PAGE:", page);
+
+    let data;
+    try {
+      const resp = await fetch(url, { headers: YAD2_HEADERS });
+      if (!resp.ok) { console.log("WARN_YAD2_API_STATUS:", resp.status); break; }
+      data = await resp.json();
+    } catch (e) {
+      console.log("WARN_YAD2_API_FETCH_ERR:", String(e)); break;
+    }
+
+    const feedItems = data?.feed?.feed_items;
+    if (!feedItems || feedItems.length === 0) break;
+
+    let foundAds = 0;
+    for (const item of feedItems) {
+      if (item.type !== "ad" && item.type !== "advanced_ad") continue;
+      foundAds++;
+
+      const hasShelter = typeof item.mamad_text === "string" && item.mamad_text.includes('ממ"ד');
+      if (cfg.require_shelter !== false && !hasShelter) continue;
+
+      const rooms = item.Rooms ? parseFloat(item.Rooms) : null;
+      if (rooms !== null) {
+        if (cfg.rooms_min && rooms < cfg.rooms_min) continue;
+        if (cfg.rooms_max && rooms > cfg.rooms_max) continue;
+      }
+
+      const listingUrl = item.link_token
+        ? `https://www.yad2.co.il/item/${item.link_token}`
+        : null;
+      if (!listingUrl) continue;
+
+      const price = item.price ? Number(item.price) : null;
+      items.push({
+        dedupe_key:          makeDedupeKey("yad2", listingUrl),
+        platform:            "yad2",
+        url:                 listingUrl,
+        title:               item.row_2 || item.city || "(no title)",
+        priceText:           price ? `${price.toLocaleString("he-IL")} ₪` : null,
+        rooms:               rooms !== null ? String(rooms) : null,
+        city:                item.city || cfg.city_hebrew,
+        hasShelter,
+        description_snippet: item.row_2 || null,
+        image_urls:          Array.isArray(item.images_urls) ? item.images_urls.slice(0, 3) : [],
+        contact:             item.contact_name || null,
+      });
+    }
+
+    console.log(`DEBUG_YAD2_API_PAGE_${page}: ads=${foundAds} matched=${items.length}`);
+
+    const totalPages = data?.feed?.total_pages;
+    if (!totalPages || page >= totalPages) break;
+  }
+
+  console.log("DEBUG_YAD2_API_TOTAL:", items.length);
+  return items;
+}
+
+// ── Yad2 realestate scan (browser-based, kept for reference) ───────────────────
 async function scanYad2Apartments(context, cfg) {
   const page = await context.newPage();
   const candidateUrls = [];
@@ -893,92 +1011,23 @@ process.on("unhandledRejection", (reason) => {
     if (!skipReasons.has(key)) skipReasons.set(key, { reason });
   };
 
-  // ── Yad2 scan ──────────────────────────────────────────────────────────────
+  // ── Yad2 scan (API — no browser) ───────────────────────────────────────────
   const allItems = [];
-
-  const ctxOpts = {
-    locale:     "he-IL",
-    timezoneId: "Asia/Jerusalem",
-    viewport:   { width: 1280, height: 800 },
-  };
-  if (fs.existsSync(YAD2_STATE_PATH)) ctxOpts.storageState = YAD2_STATE_PATH;
-
-  const ZENROWS_KEY = process.env.ZENROWS_API_KEY;
-  const browser = ZENROWS_KEY
-    ? await chromium.connectOverCDP(`wss://browser.zenrows.com?apikey=${ZENROWS_KEY}&antibot=true`)
-    : await chromium.launch({ channel: "chromium-headless-shell", args: ["--disable-dev-shm-usage"] });
-  const context = await browser.newContext(ctxOpts);
-  await context.addInitScript(() => {
-    Object.defineProperty(navigator, "webdriver", { get: () => undefined });
-  });
-
-  let candidateUrls = [];
   try {
-    candidateUrls = await scanYad2Apartments(context, cfg);
+    const yad2Items = await fetchYad2API(cfg);
+    for (const item of yad2Items) {
+      recordOpened("yad2", item.url);
+      allItems.push(item);
+    }
   } catch (e) {
-    console.log("WARN_YAD2_SCAN_FAILED:", String(e));
+    console.log("WARN_YAD2_API_SCAN_FAILED:", String(e));
   }
-
-  const itemPage = await context.newPage();
-  for (const url of candidateUrls.slice(0, MAX_YAD2_TO_FETCH)) {
-    console.log("DEBUG_FETCH_APT:", url);
-    recordOpened("yad2", url);
-
-    const details = await fetchApartmentDetails(itemPage, url);
-    if (details.skip) {
-      console.log("DEBUG_APT_SKIP:", details.skipReason, url);
-      recordSkip("yad2", url, details.skipReason);
-      continue;
-    }
-
-    // City filter — reject listings from wrong city
-    if (cfg.city_hebrew && details.city) {
-      const firstWord = cfg.city_hebrew.split(/[\s\-]+/).find(w => w.length >= 2) || cfg.city_hebrew;
-      if (!details.city.includes(firstWord)) {
-        console.log("DEBUG_APT_WRONG_CITY:", `"${details.city}"`, url);
-        recordSkip("yad2", url, "WRONG_CITY");
-        continue;
-      }
-    }
-
-    // מקלט filter — always enforced
-    if (cfg.require_shelter !== false && !details.hasShelter) {
-      console.log("DEBUG_APT_NO_SHELTER:", url);
-      recordSkip("yad2", url, "NO_SHELTER_MENTIONED");
-      continue;
-    }
-
-    // Room filter (soft — only if rooms detected in listing)
-    if (details.rooms) {
-      const r = parseFloat(details.rooms);
-      if (cfg.rooms_min && r < cfg.rooms_min) { recordSkip("yad2", url, "TOO_FEW_ROOMS"); continue; }
-      if (cfg.rooms_max && r > cfg.rooms_max) { recordSkip("yad2", url, "TOO_MANY_ROOMS"); continue; }
-    }
-
-    allItems.push({
-      dedupe_key:          makeDedupeKey("yad2", url),
-      platform:            "yad2",
-      url,
-      title:               details.title || "(no title)",
-      priceText:           details.priceText || null,
-      rooms:               details.rooms,
-      city:                details.city || cfg.city_hebrew,
-      hasShelter:          details.hasShelter,
-      description_snippet: details.description_snippet,
-      image_urls:          details.image_urls,
-      contact:             details.contact,
-    });
-  }
-
-  await browser.close();
 
   // ── Facebook scan ──────────────────────────────────────────────────────────
   if (fs.existsSync(FB_STORAGE_STATE)) {
     let fbBrowser;
     try {
-      fbBrowser = ZENROWS_KEY
-        ? await chromium.connectOverCDP(`wss://browser.zenrows.com?apikey=${ZENROWS_KEY}&antibot=true`)
-        : await chromium.launch({ channel: "chromium-headless-shell", args: ["--disable-dev-shm-usage"] });
+      fbBrowser = await chromium.launch({ channel: "chromium-headless-shell", args: ["--disable-dev-shm-usage"] });
       const fbCtx = await fbBrowser.newContext({
         storageState: FB_STORAGE_STATE,
         locale:       "he-IL",
