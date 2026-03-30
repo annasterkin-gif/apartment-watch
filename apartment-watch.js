@@ -589,13 +589,23 @@ async function fetchYad2API(cfg) {
     console.log("DEBUG_YAD2_API_PAGE:", page);
 
     let data;
-    try {
-      const resp = await fetch(url, { headers: YAD2_HEADERS });
-      if (!resp.ok) { console.log("WARN_YAD2_API_STATUS:", resp.status); break; }
-      data = await resp.json();
-    } catch (e) {
-      console.log("WARN_YAD2_API_FETCH_ERR:", String(e)); break;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        const resp = await fetch(url, { headers: YAD2_HEADERS });
+        if (!resp.ok) { console.log("WARN_YAD2_API_STATUS:", resp.status); break; }
+        const text = await resp.text();
+        if (text.trimStart().startsWith("<")) {
+          console.log("WARN_YAD2_API_HTML_RESPONSE: attempt", attempt + 1);
+          if (attempt < 2) { await new Promise(r => setTimeout(r, 4000)); continue; }
+          break;
+        }
+        data = JSON.parse(text);
+        break;
+      } catch (e) {
+        console.log("WARN_YAD2_API_FETCH_ERR:", String(e)); break;
+      }
     }
+    if (!data) break;
 
     const feedItems = data?.feed?.feed_items;
     if (!feedItems || feedItems.length === 0) break;
@@ -835,7 +845,11 @@ async function scanFacebookApartments(context, cfg) {
       const url = `https://www.facebook.com/marketplace/search/?query=${encodeURIComponent(term)}&exact=false`;
       console.log("DEBUG_FB_APT_MARKETPLACE:", term);
 
-      await searchPage.goto(url, { waitUntil: "domcontentloaded", timeout: 60000 });
+      try {
+        await searchPage.goto(url, { waitUntil: "domcontentloaded", timeout: 60000 });
+      } catch (e) {
+        console.log("WARN_FB_MARKETPLACE_TIMEOUT:", term); continue;
+      }
       await searchPage.waitForTimeout(2000 + Math.floor(Math.random() * 1000));
 
       if (detectLoginWall(searchPage)) {
@@ -883,7 +897,11 @@ async function scanFacebookApartments(context, cfg) {
       const url = `https://www.facebook.com/search/posts/?q=${encodeURIComponent(term)}`;
       console.log("DEBUG_FB_APT_POSTS:", term);
 
-      await searchPage.goto(url, { waitUntil: "domcontentloaded", timeout: 60000 });
+      try {
+        await searchPage.goto(url, { waitUntil: "domcontentloaded", timeout: 60000 });
+      } catch (e) {
+        console.log("WARN_FB_POSTS_TIMEOUT:", term); continue;
+      }
       await searchPage.waitForTimeout(2000 + Math.floor(Math.random() * 1000));
 
       if (detectLoginWall(searchPage)) {
