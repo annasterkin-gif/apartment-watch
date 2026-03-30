@@ -960,6 +960,10 @@ async function scanFacebookApartments(context, cfg) {
         const isNotifJunk = /NotificationsAll|push notifications are off|rising fan|earned a top fan/i.test(text);
         if (fbRepeat > 5 || realWords < 6 || isNotifJunk) continue;
 
+        // City filter — skip posts that don't mention the city
+        const cityWord = (city || "").split(/[\s\-]+/).find(w => w.length >= 2) || city;
+        if (cityWord && !text.includes(cityWord)) continue;
+
         const groupUrl = groupId
           ? `https://www.facebook.com/groups/${groupId}/`
           : null;
