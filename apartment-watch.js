@@ -620,6 +620,7 @@ async function fetchYad2API(cfg) {
       if (!listingUrl) continue;
 
       const price = item.price ? Number(item.price) : null;
+      if (price && cfg.price_max_ils && price > cfg.price_max_ils) continue;
       items.push({
         dedupe_key:          makeDedupeKey("yad2", listingUrl),
         platform:            "yad2",
@@ -950,12 +951,17 @@ async function scanFacebookApartments(context, cfg) {
         if (seenKeys.has(dkey)) continue;
         seenKeys.add(dkey);
 
+        // Extract price from post text and filter if above max
+        const priceMatch = text.match(/(\d[\d,]{2,})\s*(?:₪|ש"ח|שח|שקל)/);
+        const postPrice  = priceMatch ? parseInt(priceMatch[1].replace(/,/g, "")) : null;
+        if (postPrice && cfg.price_max_ils && postPrice > cfg.price_max_ils) continue;
+
         out.push({
           dedupe_key:          dkey,
           platform:            "facebook_posts",
           url:                 groupUrl || postUrl,
           title:               groupName ? `קבוצה: ${groupName}` : `פוסט פייסבוק — ${term}`,
-          priceText:           null,
+          priceText:           postPrice ? `${postPrice.toLocaleString("he-IL")} ₪` : null,
           rooms:               null,
           city,
           hasShelter:          looksLikeShelter(text),
