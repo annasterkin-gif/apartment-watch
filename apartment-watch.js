@@ -860,18 +860,35 @@ async function scanFacebookApartments(context, cfg) {
       await searchPage.evaluate(() => window.scrollBy(0, 900)).catch(() => {});
       await searchPage.waitForTimeout(1200);
 
-      const links = await searchPage.$$eval('a[href*="/marketplace/item/"]', as =>
-        [...new Set(
-          as.map(a => {
-            const m = a.href.match(/(https?:\/\/www\.facebook\.com\/marketplace\/item\/\d+)/);
-            return m ? m[1] + "/" : null;
-          }).filter(Boolean)
-        )]
-      ).catch(() => []);
+      const listings = await searchPage.$$eval('a[href*="/marketplace/item/"]', as => {
+        const seen = new Set();
+        const results = [];
+        for (const a of as) {
+          const m = a.href.match(/(https?:\/\/www\.facebook\.com\/marketplace\/item\/\d+)/);
+          if (!m) continue;
+          const url = m[1] + "/";
+          if (seen.has(url)) continue;
+          seen.add(url);
+          // Walk up to find the card container and get its text
+          let el = a;
+          for (let i = 0; i < 6; i++) {
+            if (!el.parentElement) break;
+            el = el.parentElement;
+          }
+          results.push({ url, cardText: (el.innerText || "").replace(/\s+/g, " ").trim().slice(0, 200) });
+        }
+        return results;
+      }).catch(() => []);
 
-      console.log("DEBUG_FB_APT_MARKETPLACE_LINKS:", links.length);
+      console.log("DEBUG_FB_APT_MARKETPLACE_LINKS:", listings.length);
 
-      for (const itemUrl of links.slice(0, 10)) {
+      const cityWord = (city || "").split(/[\s\-]+/).find(w => w.length >= 2) || city;
+      for (const { url: itemUrl, cardText } of listings.slice(0, 10)) {
+        // Filter by city name in card text
+        if (cityWord && cardText && !cardText.includes(cityWord)) {
+          console.log("DEBUG_FB_MARKETPLACE_WRONG_CITY:", cardText.slice(0, 60));
+          continue;
+        }
         const dkey = makeDedupeKey("facebook_marketplace", itemUrl);
         if (seenKeys.has(dkey)) continue;
         seenKeys.add(dkey);
