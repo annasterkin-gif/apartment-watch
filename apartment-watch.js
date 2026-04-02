@@ -882,10 +882,9 @@ async function scanFacebookApartments(context, cfg) {
 
       console.log("DEBUG_FB_APT_MARKETPLACE_LINKS:", listings.length);
 
-      const cityWord = (city || "").split(/[\s\-]+/).find(w => w.length >= 2) || city;
       for (const { url: itemUrl, cardText } of listings.slice(0, 10)) {
-        // Filter by city name in card text
-        if (cityWord && cardText && !cardText.includes(cityWord)) {
+        // Filter by full city name in card text
+        if (city && cardText && !cardText.includes(city)) {
           console.log("DEBUG_FB_MARKETPLACE_WRONG_CITY:", cardText.slice(0, 60));
           continue;
         }
