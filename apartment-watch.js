@@ -82,6 +82,14 @@ function roomsInRange(text, min, max) {
   return true;
 }
 
+function priceUnderMax(text, maxPrice) {
+  if (!maxPrice || !text) return true;
+  const m = text.match(/₪\s*([\d,]+)/);
+  if (!m) return true; // can't determine — let it through
+  const price = parseInt(m[1].replace(/,/g, ""), 10);
+  return price <= maxPrice;
+}
+
 function looksBotOrOops(text, title) {
   return /ShieldSquare|captcha|access denied|verify you are human|robot check|unusual traffic/i
     .test(`${text || ""} ${title || ""}`);
@@ -904,8 +912,9 @@ async function scanFacebookApartments(context, cfg) {
           console.log("DEBUG_FB_MARKETPLACE_WRONG_CITY:", cardText.slice(0, 60));
           continue;
         }
-        // Filter by room count if detectable in card text
+        // Filter by room count and price if detectable in card text
         if (!roomsInRange(cardText, cfg.rooms_min, cfg.rooms_max)) continue;
+        if (!priceUnderMax(cardText, cfg.price_max_ils)) continue;
         const dkey = makeDedupeKey("facebook_marketplace", itemUrl);
         if (seenKeys.has(dkey)) continue;
         seenKeys.add(dkey);
@@ -998,8 +1007,9 @@ async function scanFacebookApartments(context, cfg) {
         const cityWord = (city || "").split(/[\s\-]+/).find(w => w.length >= 2) || city;
         if (cityWord && !text.includes(cityWord)) continue;
 
-        // Room count filter
+        // Room count and price filter
         if (!roomsInRange(text, cfg.rooms_min, cfg.rooms_max)) continue;
+        if (!priceUnderMax(text, cfg.price_max_ils)) continue;
 
         const groupUrl = groupId
           ? `https://www.facebook.com/groups/${groupId}/`
