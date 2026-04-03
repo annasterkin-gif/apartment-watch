@@ -67,6 +67,21 @@ function looksLikeShelter(text) {
   return /(מקלט|ממ"ד|ממד|safe\s*room|saferoom|shelter)/i.test(text || "");
 }
 
+function parseRoomsFromText(text) {
+  if (!text) return null;
+  const m = text.match(/(\d+(?:[.,]\d)?)\s*(?:חדרים|חדרי|חדר)/);
+  if (m) return parseFloat(m[1].replace(",", "."));
+  return null;
+}
+
+function roomsInRange(text, min, max) {
+  const rooms = parseRoomsFromText(text);
+  if (rooms === null) return true; // can't determine — let it through
+  if (min && rooms < min) return false;
+  if (max && rooms > max) return false;
+  return true;
+}
+
 function looksBotOrOops(text, title) {
   return /ShieldSquare|captcha|access denied|verify you are human|robot check|unusual traffic/i
     .test(`${text || ""} ${title || ""}`);
@@ -889,6 +904,8 @@ async function scanFacebookApartments(context, cfg) {
           console.log("DEBUG_FB_MARKETPLACE_WRONG_CITY:", cardText.slice(0, 60));
           continue;
         }
+        // Filter by room count if detectable in card text
+        if (!roomsInRange(cardText, cfg.rooms_min, cfg.rooms_max)) continue;
         const dkey = makeDedupeKey("facebook_marketplace", itemUrl);
         if (seenKeys.has(dkey)) continue;
         seenKeys.add(dkey);
@@ -980,6 +997,9 @@ async function scanFacebookApartments(context, cfg) {
         // City filter — skip posts that don't mention the city
         const cityWord = (city || "").split(/[\s\-]+/).find(w => w.length >= 2) || city;
         if (cityWord && !text.includes(cityWord)) continue;
+
+        // Room count filter
+        if (!roomsInRange(text, cfg.rooms_min, cfg.rooms_max)) continue;
 
         const groupUrl = groupId
           ? `https://www.facebook.com/groups/${groupId}/`
