@@ -822,11 +822,12 @@ async function fetchApartmentDetails(page, url) {
 
 // ── Facebook apartment scan ────────────────────────────────────────────────────
 async function scanFacebookApartments(context, cfg) {
-  const city  = cfg.city_hebrew;
+  const city        = cfg.city_hebrew;
+  const shelterWord = cfg.require_shelter !== false ? " מקלט" : "";
   const terms = [
-    `דירה להשכרה מקלט ${city}`,
-    `להשכרה מקלט ${city}`,
-    `דירה ${city} מקלט`,
+    `דירה להשכרה${shelterWord} ${city}`,
+    `להשכרה${shelterWord} ${city}`,
+    `דירה ${city}${shelterWord}`,
   ];
 
   const searchPage = await context.newPage();
@@ -899,7 +900,7 @@ async function scanFacebookApartments(context, cfg) {
           priceText:           null,
           rooms:               null,
           city,
-          hasShelter:          true,   // search included מקלט
+          hasShelter:          cfg.require_shelter !== false,
           description_snippet: `(Facebook Marketplace: "${term}")`,
           image_urls:          [],
           contact:             null,
