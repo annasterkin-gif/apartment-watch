@@ -1121,7 +1121,8 @@ process.on("unhandledRejection", (reason) => {
   if (newItems.length === 0) {
     bodyLines.push("No new apartments found this run.");
   } else {
-    bodyLines.push(`Found ${newItems.length} new apartment listings in ${cfg.city_hebrew} with מקלט:\n`);
+    const shelterNote = cfg.require_shelter !== false ? " with מקלט" : "";
+    bodyLines.push(`Found ${newItems.length} new apartment listings in ${cfg.city_hebrew}${shelterNote}:\n`);
     for (const it of newItems) {
       bodyLines.push(`[${it.platform}] ${it.title}`);
       if (it.priceText)           bodyLines.push(`  Price:   ${it.priceText}`);
