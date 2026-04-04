@@ -614,9 +614,20 @@ async function fetchYad2API(cfg) {
     let data;
     for (let attempt = 0; attempt < 3; attempt++) {
       try {
-        const resp = await fetch(url, { headers: YAD2_HEADERS });
-        if (!resp.ok) { console.log("WARN_YAD2_API_STATUS:", resp.status); break; }
-        const text = await resp.text();
+        let resp, text;
+        if (GMAIL_SCRIPT_URL) {
+          // Route through Google Apps Script to avoid Render IP block
+          resp = await fetch(GMAIL_SCRIPT_URL, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ action: "fetchYad2", params: new URLSearchParams(params).toString() }),
+          });
+          text = await resp.text();
+        } else {
+          resp = await fetch(url, { headers: YAD2_HEADERS });
+          if (!resp.ok) { console.log("WARN_YAD2_API_STATUS:", resp.status); break; }
+          text = await resp.text();
+        }
         if (text.trimStart().startsWith("<")) {
           console.log("WARN_YAD2_API_HTML_RESPONSE: attempt", attempt + 1);
           if (attempt < 2) { await new Promise(r => setTimeout(r, 4000)); continue; }
