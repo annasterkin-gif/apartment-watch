@@ -1134,6 +1134,11 @@ process.on("unhandledRejection", (reason) => {
         timezoneId:   "Asia/Jerusalem",
         viewport:     { width: 800, height: 600 },
       });
+      await fbCtx.route("**/*", (route) => {
+        const type = route.request().resourceType();
+        if (["image", "media", "font", "stylesheet"].includes(type)) return route.abort();
+        route.continue();
+      });
       const fbItems = await scanFacebookApartments(fbCtx, cfg);
       for (const fi of fbItems) { recordOpened(fi.platform, fi.url); allItems.push(fi); }
     } catch (e) {
