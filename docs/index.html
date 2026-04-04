@@ -80,7 +80,7 @@ const T = {
     labelPrice: "מחיר מקסימלי (₪ לחודש)", hintPrice: "ריק = ללא הגבלה",
     labelShelter: "חובה: מקלט בבניין",
     btnSave: "💾 שמור הגדרות", btnRun: "▶ שמור והפעל עכשיו",
-    logTitle: "📋 לוג הרצה", linkResults: "← צפה בתוצאות",
+    logTitle: "📋 לוג הרצה", linkResults: "← צפה בתוצאות", btnCancel: "⏹ בטל הרצה",
     flashSaved: "✓ ההגדרות נשמרו.", flashRunning: "▶ הסוכן פועל — הלוג מוצג למטה.",
     flashAlready: "⚠ הרצה כבר פעילה, המתן לסיומה.", flashError: "שגיאה בחיבור לשרת.",
     resultsTitle: "🏘 תוצאות", lastRun: "הרצה אחרונה:", newListings: "דירות חדשות",
@@ -106,7 +106,7 @@ const T = {
     labelPrice: "Max price (₪/month)", hintPrice: "leave blank = no limit",
     labelShelter: "Required: shelter in building",
     btnSave: "💾 Save settings", btnRun: "▶ Save & Run now",
-    logTitle: "📋 Run log", linkResults: "→ View results",
+    logTitle: "📋 Run log", linkResults: "→ View results", btnCancel: "⏹ Cancel run",
     flashSaved: "✓ Settings saved.", flashRunning: "▶ Agent is running — log shown below.",
     flashAlready: "⚠ A run is already in progress, please wait.", flashError: "Error connecting to server.",
     resultsTitle: "🏘 Results", lastRun: "Last run:", newListings: "new listings",
@@ -217,7 +217,9 @@ async function renderSettings(flash) {
 
       <hr class="divider">
       <div class="log-section" id="logSection" style="display:none">
-        <h2>${tr.logTitle} <span class="spinner" id="spinner">⟳</span></h2>
+        <h2>${tr.logTitle} <span class="spinner" id="spinner">⟳</span>
+          <button id="btnCancel" onclick="cancelRun()" style="margin-inline-start:12px;font-size:.8rem;padding:3px 10px;background:#fee2e2;color:#991b1b;border:1px solid #fca5a5;border-radius:6px;cursor:pointer">${tr.btnCancel}</button>
+        </h2>
         <pre id="log"></pre>
       </div>
     </div>
@@ -268,6 +270,12 @@ async function saveConfig(andRun) {
 
   if (!hasFb) { showFacebookPrompt(); return; }
   await doRun();
+}
+
+async function cancelRun() {
+  await fetch(window.API_BASE + "/api/cancel", { method: "POST" }).catch(() => {});
+  const bc = document.getElementById("btnCancel");
+  if (bc) bc.style.display = "none";
 }
 
 async function doRun() {
@@ -351,6 +359,8 @@ function startLogStream() {
 
   logEventSource.addEventListener("done", () => {
     spinner.style.display = "none";
+    const bc = document.getElementById("btnCancel");
+    if (bc) bc.style.display = "none";
     logEventSource.close();
     logEventSource = null;
     const link = document.createElement("a");

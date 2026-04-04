@@ -63,6 +63,8 @@ function broadcastDone() {
   sseClients = [];
 }
 
+let activeChild = null;
+
 function runScraper() {
   if (runInProgress) return false;
   runInProgress  = true;
@@ -73,6 +75,7 @@ function runScraper() {
     cwd: __dirname,
     env,
   });
+  activeChild = child;
 
   child.stdout.on("data", d => String(d).split("\n").forEach(l => { if (l) broadcastLog(l); }));
   child.stderr.on("data", d => String(d).split("\n").forEach(l => { if (l) broadcastLog("ERR: " + l); }));
@@ -80,6 +83,7 @@ function runScraper() {
     broadcastLog(`\n=== Process exited (code ${code}) ===`);
     broadcastDone();
     runInProgress = false;
+    activeChild   = null;
   });
   return true;
 }
@@ -124,6 +128,17 @@ const server = http.createServer(async (req, res) => {
   if (req.method === "GET" && u.pathname === "/api/status") {
     res.writeHead(200, { "Content-Type": "application/json" });
     res.end(JSON.stringify({ running: runInProgress }));
+    return;
+  }
+
+  // POST /api/cancel
+  if (req.method === "POST" && u.pathname === "/api/cancel") {
+    if (activeChild) {
+      activeChild.kill("SIGTERM");
+      broadcastLog("\n=== Run cancelled by user ===");
+    }
+    res.writeHead(200, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({ ok: true }));
     return;
   }
 
