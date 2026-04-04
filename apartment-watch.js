@@ -616,13 +616,9 @@ async function fetchYad2API(cfg) {
       try {
         let resp, text;
         if (GMAIL_SCRIPT_URL) {
-          // Route through Google Apps Script to avoid Render IP block
-          // Apps Script redirects — follow redirect manually to preserve POST body
-          const body = JSON.stringify({ action: "fetchYad2", params: new URLSearchParams(params).toString() });
-          const headers = { "Content-Type": "application/json", "Content-Length": Buffer.byteLength(body).toString() };
-          let r1 = await fetch(GMAIL_SCRIPT_URL, { method: "POST", headers, body, redirect: "manual" });
-          const finalUrl = r1.headers.get("location") || GMAIL_SCRIPT_URL;
-          resp = await fetch(finalUrl, { method: "POST", headers, body });
+          // Route through Google Apps Script via GET to avoid Render IP block
+          const proxyUrl = `${GMAIL_SCRIPT_URL}?action=fetchYad2&params=${encodeURIComponent(new URLSearchParams(params).toString())}`;
+          resp = await fetch(proxyUrl);
           text = await resp.text();
         } else {
           resp = await fetch(url, { headers: YAD2_HEADERS });
