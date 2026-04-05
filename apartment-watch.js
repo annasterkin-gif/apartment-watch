@@ -626,7 +626,7 @@ async function fetchYad2API(cfg) {
           text = await resp.text();
         }
         if (text.trimStart().startsWith("<")) {
-          console.log("WARN_YAD2_API_HTML_RESPONSE: attempt", attempt + 1);
+          console.log("WARN_YAD2_API_HTML_RESPONSE: attempt", attempt + 1, "|", text.slice(0, 120).replace(/\s+/g, " "));
           if (attempt < 2) { await new Promise(r => setTimeout(r, 4000)); continue; }
           break;
         }
