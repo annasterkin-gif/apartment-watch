@@ -272,6 +272,26 @@ async function saveConfig(andRun) {
   await doRun();
 }
 
+function playDoneChime() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const notes = [523, 659, 784, 1047, 784, 1047]; // C5 E5 G5 C6 G5 C6
+    const durations = [0.15, 0.15, 0.15, 0.4, 0.15, 0.5];
+    let time = ctx.currentTime + 0.05;
+    notes.forEach((freq, i) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain); gain.connect(ctx.destination);
+      osc.type = "sine";
+      osc.frequency.value = freq;
+      gain.gain.setValueAtTime(0.35, time);
+      gain.gain.exponentialRampToValueAtTime(0.001, time + durations[i]);
+      osc.start(time); osc.stop(time + durations[i]);
+      time += durations[i] + 0.05;
+    });
+  } catch {}
+}
+
 async function cancelRun() {
   await fetch(window.API_BASE + "/api/cancel", { method: "POST" }).catch(() => {});
   const bc = document.getElementById("btnCancel");
@@ -361,6 +381,7 @@ function startLogStream() {
     spinner.style.display = "none";
     const bc = document.getElementById("btnCancel");
     if (bc) bc.style.display = "none";
+    playDoneChime();
     logEventSource.close();
     logEventSource = null;
     const link = document.createElement("a");
