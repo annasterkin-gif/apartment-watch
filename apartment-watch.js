@@ -1180,6 +1180,7 @@ process.on("unhandledRejection", (reason) => {
     for (const it of newItems) {
       bodyLines.push(`[${it.platform}] ${it.title}`);
       if (it.priceText)           bodyLines.push(`  Price:   ${it.priceText}`);
+      else if (it.platform === "yad2") bodyLines.push(`  Price:   ⚠ not listed in API — verify on site`);
       if (it.rooms)               bodyLines.push(`  Rooms:   ${it.rooms}`);
       if (it.city)                bodyLines.push(`  City:    ${it.city}`);
       if (it.contact)             bodyLines.push(`  Phone:   ${it.contact}`);
