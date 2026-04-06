@@ -12,8 +12,9 @@ const FB_STORAGE_STATE = path.join(__dirname, "facebook-state.json");
 const YAD2_STATE_PATH  = path.join(__dirname, "yad2-state.json");
 const RESULTS_PATH     = path.join(__dirname, "last-results.json");
 
-const GMAIL_SCRIPT_URL = process.env.GMAIL_SCRIPT_URL || "";
-const NOTIFY_EMAIL     = process.env.NOTIFY_EMAIL     || "";
+const GMAIL_SCRIPT_URL   = process.env.GMAIL_SCRIPT_URL   || "";
+const NOTIFY_EMAIL       = process.env.NOTIFY_EMAIL       || "";
+const SCRAPER_API_KEY    = process.env.SCRAPER_API_KEY    || "";
 const MAX_YAD2_TO_FETCH = 30;
 
 function loadConfig() {
@@ -604,9 +605,13 @@ async function fetchYad2API(cfg) {
   if (cfg.price_max_ils) params.maxPrice = String(cfg.price_max_ils);
 
   const items = [];
-  const MAX_PAGES = 10;
+  // ScraperAPI free tier: 1000 credits/month, render=true costs 5 credits each → cap at 3 pages (=15 credits/run)
+  const MAX_PAGES = SCRAPER_API_KEY ? 3 : 10;
+  // Reuse same proxy IP+cookies across pages so ShieldSquare session from page 1 carries to page 2+
+  const scraperSession = SCRAPER_API_KEY ? Math.floor(Math.random() * 9000) + 1000 : null;
 
   for (let page = 1; page <= MAX_PAGES; page++) {
+    if (page > 1) await new Promise(r => setTimeout(r, 5000));
     params.page = String(page);
     const url = `${YAD2_API_BASE}?${new URLSearchParams(params)}`;
     console.log("DEBUG_YAD2_API_PAGE:", page);
@@ -615,7 +620,13 @@ async function fetchYad2API(cfg) {
     for (let attempt = 0; attempt < 3; attempt++) {
       try {
         let resp, text;
-        if (GMAIL_SCRIPT_URL) {
+        if (SCRAPER_API_KEY) {
+          // Route through ScraperAPI — handles ShieldSquare anti-bot
+          // session_number keeps same IP+cookies across pages so ShieldSquare session persists
+          const scraperUrl = `https://api.scraperapi.com?api_key=${SCRAPER_API_KEY}&url=${encodeURIComponent(url)}&render=true&session_number=${scraperSession}`;
+          resp = await fetch(scraperUrl);
+          text = await resp.text();
+        } else if (GMAIL_SCRIPT_URL) {
           // Route through Google Apps Script via GET to avoid Render IP block
           const proxyUrl = `${GMAIL_SCRIPT_URL}?action=fetchYad2&params=${encodeURIComponent(new URLSearchParams(params).toString())}`;
           resp = await fetch(proxyUrl);
