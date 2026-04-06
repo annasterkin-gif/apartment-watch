@@ -1,7 +1,7 @@
 {
-  "city_hebrew": "פרדס חנה",
-  "rooms_min": 2,
-  "rooms_max": 3,
-  "price_max_ils": 5000,
+  "city_hebrew": "רמת גן",
+  "rooms_min": 3,
+  "rooms_max": 4,
+  "price_max_ils": 6000,
   "require_shelter": false
 }
