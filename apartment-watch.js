@@ -672,6 +672,7 @@ async function fetchYad2API(cfg) {
       if (!listingUrl) continue;
 
       const price = item.price ? Number(item.price) : null;
+      if (!price) console.log("DEBUG_YAD2_PRICE_FIELDS:", JSON.stringify({ link: item.link_token, price: item.price, Price: item.Price, price_total: item.price_total, price_only: item.price_only, row_3: item.row_3, row_4: item.row_4 }));
       if (price && cfg.price_max_ils && price > cfg.price_max_ils) continue;
       items.push({
         dedupe_key:          makeDedupeKey("yad2", listingUrl),
