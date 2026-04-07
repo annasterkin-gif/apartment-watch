@@ -636,8 +636,8 @@ async function fetchYad2API(cfg) {
           if (!resp.ok) { console.log("WARN_YAD2_API_STATUS:", resp.status); break; }
           text = await resp.text();
         }
-        if (text.trimStart().startsWith("<")) {
-          console.log("WARN_YAD2_API_HTML_RESPONSE: attempt", attempt + 1, "|", text.slice(0, 120).replace(/\s+/g, " "));
+        if (text.trimStart().startsWith("<") || !text.trimStart().startsWith("{")) {
+          console.log("WARN_YAD2_API_BAD_RESPONSE: attempt", attempt + 1, "|", text.slice(0, 120).replace(/\s+/g, " "));
           if (attempt < 2) { await new Promise(r => setTimeout(r, 4000)); continue; }
           break;
         }
@@ -956,6 +956,7 @@ async function scanFacebookApartments(context, cfg) {
 
     // ── Posts ──────────────────────────────────────────────────────────────
     console.log("DEBUG_FB_APT: starting Posts scan");
+    try {
     for (const term of terms) {
       const url = `https://www.facebook.com/search/posts/?q=${encodeURIComponent(term)}`;
       console.log("DEBUG_FB_APT_POSTS:", term);
@@ -1061,6 +1062,9 @@ async function scanFacebookApartments(context, cfg) {
           group_url:           groupUrl,
         });
       }
+    }
+    } catch (e) {
+      console.log("WARN_FB_POSTS_CRASHED:", String(e));
     }
   } finally {
     await searchPage.close().catch(() => {});
