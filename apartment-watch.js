@@ -944,6 +944,7 @@ async function scanFacebookApartments(context, cfg) {
         // Filter by room count and price if detectable in card text
         if (!roomsInRange(cardText, cfg.rooms_min, cfg.rooms_max)) continue;
         if (!priceUnderMax(cardText, cfg.price_max_ils)) continue;
+        console.log("DEBUG_FB_MARKETPLACE_PASS:", cardText.slice(0, 120));
         const dkey = makeDedupeKey("facebook_marketplace", itemUrl);
         if (seenKeys.has(dkey)) continue;
         seenKeys.add(dkey);
