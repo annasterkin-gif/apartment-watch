@@ -944,9 +944,21 @@ async function scanFacebookApartments(context, cfg) {
         }
         // Skip sublets and roommate listings
         if (/סאבלט|שותפ|sublet|roommate/i.test(cardText)) { console.log("DEBUG_FB_MARKETPLACE_SKIP_SUBLET:", cardText.slice(0, 60)); continue; }
-        if (!roomsInRange(cardText, cfg.rooms_min, cfg.rooms_max)) continue;
-        if (!priceUnderMax(cardText, cfg.price_max_ils)) continue;
-        console.log("DEBUG_FB_MARKETPLACE_PASS:", cardText.slice(0, 120));
+        // If card has no room count, open the listing page to check
+        let effectiveText = cardText;
+        if (parseRoomsFromText(cardText) === null) {
+          try {
+            const lp = await context.newPage();
+            await lp.goto(itemUrl, { waitUntil: "domcontentloaded", timeout: 30000 });
+            await lp.waitForTimeout(1500);
+            effectiveText = await lp.evaluate(() => document.body.innerText.slice(0, 1000)).catch(() => cardText);
+            await lp.close();
+            console.log("DEBUG_FB_MARKETPLACE_DETAIL:", effectiveText.slice(0, 100).replace(/\s+/g, " "));
+          } catch { /* keep cardText */ }
+        }
+        if (!roomsInRange(effectiveText, cfg.rooms_min, cfg.rooms_max)) continue;
+        if (!priceUnderMax(effectiveText, cfg.price_max_ils)) continue;
+        console.log("DEBUG_FB_MARKETPLACE_PASS:", effectiveText.slice(0, 120).replace(/\s+/g, " "));
         const dkey = makeDedupeKey("facebook_marketplace", itemUrl);
         if (seenKeys.has(dkey)) continue;
         seenKeys.add(dkey);
