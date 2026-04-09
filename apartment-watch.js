@@ -895,7 +895,8 @@ async function scanFacebookApartments(context, cfg) {
     // ── Marketplace ────────────────────────────────────────────────────────
     console.log("DEBUG_FB_APT: starting Marketplace scan");
     for (const term of terms) {
-      const url = `https://www.facebook.com/marketplace/search/?query=${encodeURIComponent(term)}&exact=false`;
+      const bedroomParams = cfg.rooms_min ? `&minBedrooms=${cfg.rooms_min}` : "";
+      const url = `https://www.facebook.com/marketplace/search/?query=${encodeURIComponent(term)}&exact=false${bedroomParams}`;
       console.log("DEBUG_FB_APT_MARKETPLACE:", term);
 
       try {
@@ -941,6 +942,8 @@ async function scanFacebookApartments(context, cfg) {
           console.log("DEBUG_FB_MARKETPLACE_WRONG_CITY:", cardText.slice(0, 60));
           continue;
         }
+        // Skip sublets and roommate listings
+        if (/סאבלט|שותפ|sublet|roommate/i.test(cardText)) { console.log("DEBUG_FB_MARKETPLACE_SKIP_SUBLET:", cardText.slice(0, 60)); continue; }
         // Filter by room count and price if detectable in card text
         if (!roomsInRange(cardText, cfg.rooms_min, cfg.rooms_max)) continue;
         if (!priceUnderMax(cardText, cfg.price_max_ils)) continue;
