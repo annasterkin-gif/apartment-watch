@@ -77,6 +77,9 @@ function parseRoomsFromText(text) {
   const half = text.match(/(\d+)\s*חדרים?\s*וחצי/);
   if (half) return parseFloat(half[1]) + 0.5;
   if (/חדר\s*וחצי/.test(text)) return 1.5;
+  // English: "3 bedrooms", "3 bedroom", "3 bed"
+  const eng = text.match(/(\d+(?:\.\d)?)\s*bed(?:room)?s?/i);
+  if (eng) return parseFloat(eng[1]);
   if (/סטודיו|studio/i.test(text)) return 1;
   return null;
 }
