@@ -944,7 +944,8 @@ async function scanFacebookApartments(context, cfg) {
         }
         // Skip sublets and roommate listings
         if (/סאבלט|שותפ|sublet|roommate/i.test(cardText)) { console.log("DEBUG_FB_MARKETPLACE_SKIP_SUBLET:", cardText.slice(0, 60)); continue; }
-        // Filter by room count and price if detectable in card text
+        // Skip if room count is not detectable in card text — avoids false positives
+        if (parseRoomsFromText(cardText) === null) { console.log("DEBUG_FB_MARKETPLACE_SKIP_NO_ROOMS:", cardText.slice(0, 60)); continue; }
         if (!roomsInRange(cardText, cfg.rooms_min, cfg.rooms_max)) continue;
         if (!priceUnderMax(cardText, cfg.price_max_ils)) continue;
         console.log("DEBUG_FB_MARKETPLACE_PASS:", cardText.slice(0, 120));
