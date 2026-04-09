@@ -70,8 +70,13 @@ function looksLikeShelter(text) {
 
 function parseRoomsFromText(text) {
   if (!text) return null;
+  // "3.5 חדרים", "3,5 חדרים", "3 חדרים"
   const m = text.match(/(\d+(?:[.,]\d)?)\s*(?:חדרים|חדרי|חדר)/);
   if (m) return parseFloat(m[1].replace(",", "."));
+  // "חדר וחצי" = 1.5, "2 חדרים וחצי" = 2.5
+  const half = text.match(/(\d+)\s*חדרים?\s*וחצי/);
+  if (half) return parseFloat(half[1]) + 0.5;
+  if (/חדר\s*וחצי/.test(text)) return 1.5;
   if (/סטודיו|studio/i.test(text)) return 1;
   return null;
 }
