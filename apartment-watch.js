@@ -72,6 +72,7 @@ function parseRoomsFromText(text) {
   if (!text) return null;
   const m = text.match(/(\d+(?:[.,]\d)?)\s*(?:חדרים|חדרי|חדר)/);
   if (m) return parseFloat(m[1].replace(",", "."));
+  if (/סטודיו|studio/i.test(text)) return 1;
   return null;
 }
 
