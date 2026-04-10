@@ -950,7 +950,9 @@ async function scanFacebookApartments(context, cfg) {
           console.log("DEBUG_FB_MARKETPLACE_OPENING_DETAIL:", itemUrl);
           try {
             const lp = await context.newPage();
-            await lp.goto(itemUrl, { waitUntil: "domcontentloaded", timeout: 8000 }).catch(() => {});
+            const loaded = await lp.goto(itemUrl, { waitUntil: "domcontentloaded", timeout: 10000 }).then(() => true).catch(() => false);
+            console.log("DEBUG_FB_MARKETPLACE_DETAIL_LOADED:", loaded);
+            if (loaded) await lp.waitForTimeout(2000);
             effectiveText = await lp.evaluate(() => document.body.innerText.slice(0, 1000)).catch(() => cardText);
             console.log("DEBUG_FB_MARKETPLACE_DETAIL:", effectiveText.slice(0, 100).replace(/\s+/g, " "));
             await lp.close().catch(() => {});
