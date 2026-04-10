@@ -950,11 +950,10 @@ async function scanFacebookApartments(context, cfg) {
           console.log("DEBUG_FB_MARKETPLACE_OPENING_DETAIL:", itemUrl);
           try {
             const lp = await context.newPage();
-            await lp.goto(itemUrl, { waitUntil: "domcontentloaded", timeout: 30000 });
-            await lp.waitForTimeout(1500);
+            await lp.goto(itemUrl, { waitUntil: "domcontentloaded", timeout: 8000 }).catch(() => {});
             effectiveText = await lp.evaluate(() => document.body.innerText.slice(0, 1000)).catch(() => cardText);
             console.log("DEBUG_FB_MARKETPLACE_DETAIL:", effectiveText.slice(0, 100).replace(/\s+/g, " "));
-            await lp.close();
+            await lp.close().catch(() => {});
           } catch (e) { console.log("WARN_FB_MARKETPLACE_DETAIL_ERR:", String(e).slice(0, 80)); }
         }
         if (!roomsInRange(effectiveText, cfg.rooms_min, cfg.rooms_max)) continue;
