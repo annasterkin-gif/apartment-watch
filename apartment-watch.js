@@ -947,14 +947,15 @@ async function scanFacebookApartments(context, cfg) {
         // If card has no room count, open the listing page to check
         let effectiveText = cardText;
         if (parseRoomsFromText(cardText) === null) {
+          console.log("DEBUG_FB_MARKETPLACE_OPENING_DETAIL:", itemUrl);
           try {
             const lp = await context.newPage();
             await lp.goto(itemUrl, { waitUntil: "domcontentloaded", timeout: 30000 });
             await lp.waitForTimeout(1500);
             effectiveText = await lp.evaluate(() => document.body.innerText.slice(0, 1000)).catch(() => cardText);
-            await lp.close();
             console.log("DEBUG_FB_MARKETPLACE_DETAIL:", effectiveText.slice(0, 100).replace(/\s+/g, " "));
-          } catch { /* keep cardText */ }
+            await lp.close();
+          } catch (e) { console.log("WARN_FB_MARKETPLACE_DETAIL_ERR:", String(e).slice(0, 80)); }
         }
         if (!roomsInRange(effectiveText, cfg.rooms_min, cfg.rooms_max)) continue;
         if (!priceUnderMax(effectiveText, cfg.price_max_ils)) continue;
